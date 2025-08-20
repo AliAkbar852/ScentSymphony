@@ -7,13 +7,14 @@ from scraper.CloudflareBypasser import get_page_html
 from scraper.extractor import Extractor
 from utilities.dbmanager import DBManager
 from config import DB_CONNECTION_STRING
+from utilities.file_utils import failed_url,clean_failed_urls
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-BATCH_SIZE = 50
-SLEEP_MIN = 20 * 60  # 20 minutes
-SLEEP_MAX = 30 * 60  # 30 minutes
+BATCH_SIZE = 25
+SLEEP_MIN = 10 * 60  # 10 minutes
+SLEEP_MAX = 15 * 60  # 15 minutes
 MAX_RETRIES = 3      # limit retries for failing URLs
 FAILED_LOG_FILE = "failed_urls.log"
 
@@ -40,7 +41,7 @@ def main():
 
     # Filter out already scraped URLs
     urls_left = [u for u in urls_to_scrape if u not in scraped_urls]
-
+    clean_failed_urls()
     # Dictionary to track retries {url: retry_count}
     retry_counts = {}
 
@@ -67,10 +68,13 @@ def main():
                 else:
                     logging.warning(f"⚠️ Could not retrieve HTML for {url}. Will retry later.")
                     failed_urls.append((url, "Empty HTML"))
+                    failed_url(url)
 
             except Exception as e:
                 logging.error(f"❌ Error while processing {url}: {e}", exc_info=True)
                 failed_urls.append((url, str(e)))
+                print("Adding Url to failed_urls JSON File!")
+                failed_url(url)
 
         # Handle failed URLs
         retry_next = []

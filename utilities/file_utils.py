@@ -3,9 +3,35 @@ import csv
 import json
 import re
 from config import OUTPUT_FOLDER
-
+from datetime import datetime
 
 SCRAPED_URLS_FILE = "data/scraped_urls.json"
+FAILED_FILE = "data/failed_urls.json"
+
+def clean_failed_urls():
+    # Load failed urls
+    with open(FAILED_FILE, "r", encoding="utf-8") as f:
+        failed_data = json.load(f)
+
+    # Load scraped urls
+    with open(SCRAPED_URLS_FILE, "r", encoding="utf-8") as f:
+        scraped_data = json.load(f)
+
+    # Extract failed urls
+    failed_urls = [item["url"] for item in failed_data]
+
+    # Remove failed URLs if they exist in scraped_data
+    scraped_data = [url for url in scraped_data if url not in failed_urls]
+
+    # Save updated scraped_urls.json
+    with open(SCRAPED_URLS_FILE, "w", encoding="utf-8") as f:
+        json.dump(scraped_data, f, indent=4, ensure_ascii=False)
+
+    # Clear failed_urls.json completely
+    with open(FAILED_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f, indent=4, ensure_ascii=False)
+
+    print("Cleanup completed successfully ✅")
 
 def normalize_key(text):
     return re.sub(r'\W+', '_', text.strip().lower())
@@ -40,3 +66,25 @@ def load_scraped_urls():
 def save_scraped_urls(urls):
     with open(SCRAPED_URLS_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(urls), f, indent=2)
+
+FAILED_LOG_FILE = "data/failed_urls.json"
+
+
+def failed_url(url):
+    """Save failed URLs in a JSON array with timestamps."""
+    log_entry = {"time": datetime.now().isoformat(), "url": url}
+
+    # Load existing data if file exists
+    if os.path.exists(FAILED_LOG_FILE):
+        with open(FAILED_LOG_FILE, "r", encoding="utf-8") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = []
+    else:
+        data = []
+
+    # Append new entry and save
+    data.append(log_entry)
+    with open(FAILED_LOG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)

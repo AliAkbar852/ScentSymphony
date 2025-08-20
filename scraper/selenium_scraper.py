@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from utilities.file_utils import failed_url
 
 
 # Due to space limitations, placeholder only
@@ -90,7 +91,6 @@ def scrape_all_reviews_with_selenium(url):
             else:
                 print("Page grew, continue scrolling...")
                 last_height = new_height
-
             try:
                 no_more_data_xpath = "//div[contains(@class, 'infinite-status-prompt') and contains(text(), 'No more data')]"
                 end_element = driver.find_element(By.XPATH, no_more_data_xpath)
@@ -99,6 +99,14 @@ def scrape_all_reviews_with_selenium(url):
                     break
             except NoSuchElementException:
                 pass
+        try:
+            review_conatiner = driver.find_element(By.XPATH, "//span[text()='All Reviews By Date']")
+            if review_conatiner.is_displayed():
+                print("Scrolling was Successfull ")
+        except NoSuchElementException:
+            print("Scrolling was Failed Due to Some Pop-Up or Something!")
+            print("Adding URL to JSON file!")
+            failed_url(url)
 
         print("Finished scrolling. Waiting to let final reviews fully render...")
 
@@ -152,6 +160,8 @@ def scrape_all_reviews_with_selenium(url):
 
     except Exception as e:
         print("Error:", e)
+        print("Adding URL to failed_url JSON file!")
+        failed_url(url)
     finally:
         driver.quit()
 

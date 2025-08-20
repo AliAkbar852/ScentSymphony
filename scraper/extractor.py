@@ -2,7 +2,7 @@ import logging
 import re
 from bs4 import BeautifulSoup
 from utilities.dbmanager import DBManager
-from utilities.file_utils import normalize_key
+from utilities.file_utils import normalize_key, failed_url
 from .selenium_scraper import scrape_all_reviews_with_selenium
 
 # Configure logging
@@ -107,7 +107,8 @@ class Extractor:
             data.update(scrape_all_reviews_with_selenium(url))
         except Exception as e:
             logging.error(f"❌ Selenium review scraping failed for {url}: {e}")
-
+            print("Adding URL to JSON file!")
+            failed_url(url)
         return data
 
     # ---------- Individual Extract Methods Below ----------
