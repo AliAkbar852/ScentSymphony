@@ -1,7 +1,6 @@
 import logging
 import time
 import random
-from datetime import datetime
 
 from utilities.file_utils import read_urls_from_csv, load_scraped_urls, save_scraped_urls
 from scraper.CloudflareBypasser import get_page_html
@@ -13,9 +12,9 @@ from utilities.file_utils import failed_url, clean_failed_urls
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-BATCH_SIZE = 2  # Number of URLs to process in each batch
-SLEEP_MIN = 1 * 30  # 10 minutes
-SLEEP_MAX = 1 * 30  # 15 minutes
+BATCH_SIZE = 25  # Number of URLs to process in each batch
+SLEEP_MIN = 8 * 30  # 8 minutes
+SLEEP_MAX = 10 * 30  # 10 minutes
 FAILED_LOG_FILE = "failed_urls.log"
 
 

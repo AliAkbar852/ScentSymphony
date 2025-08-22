@@ -136,7 +136,7 @@ def scrape_all_reviews_with_selenium(url):
             try:
                username_element = review.find_element(By.CSS_SELECTOR, "b.idLinkify a")
                username = username_element.text.strip()
-            #    print("Username:", username)  
+            #    print("Username:", username)
             except NoSuchElementException:
                 print("Username not found for a review. Skipping extraction.")
 
@@ -150,7 +150,8 @@ def scrape_all_reviews_with_selenium(url):
 
             # Add the found text and date to our list if text is not empty
             if review_text:
-                scraped_data.append({'review_text': review_text, 'review_date': review_date, 'UserName': username})
+                # CHANGED: Updated dictionary keys to match dbmanager expectations
+                scraped_data.append({'review_content': review_text, 'review_date': review_date, 'reviewer_name': username})
             else:
                 skipped_reviews += 1
 
