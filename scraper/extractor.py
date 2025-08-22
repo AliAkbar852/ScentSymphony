@@ -18,31 +18,34 @@ class Extractor:
             self._save_to_relational_db(perfume_data)
         else:
             logging.warning(f"Could not extract any data for URL: {url}. Skipping database insertion.")
-    
-    def _save_to_relational_db(self, data: dict):
-        logging.info(f"Processing data for '{data.get('title')}' for the database...")
-        brand_id = self.db_manager.get_or_create_brand(
-        name=data.get('brand_name'),
-        countryID=None,  # Or actual country if you have it
-        BrandUrl=None,
-        PerfumeCount=None,
-        WebsiteUrl=None,
-        imageUrl=None)
 
+    def _save_to_relational_db(self, data: dict):
+        logging.info(f"Processing data for '{data.get('perfume_name')}' for the database...")
+
+        # CHANGED
+        brand_id = self.db_manager.get_or_create_brand(
+            brand_name=data.get('brand_name'),
+            country_id=None,
+            brand_url=None,
+            perfume_count=None,
+            brand_website_url=None,
+            brand_image_url=None
+        )
+
+        # CHANGED
         perfume_id = self.db_manager.get_or_create_perfume(
-            name=data.get('title'),
-            subtitle=data.get('subtitle'),
-            # brand_name=data.get('brand_name'),
+            perfume_name=data.get('perfume_name'),
+            perfume_for=data.get('perfume_for'),
             image_url=data.get('image_url'),
             launch_year=data.get('launch_year'),
             perfumer_name=data.get('perfumer_name'),
             perfumer_url=data.get('perfumer_url'),
-            url=data.get('url'),
+            perfume_url=data.get('perfume_url'),
             brand_id=brand_id
         )
 
         if not perfume_id:
-            logging.error(f"❌ Failed to get or create perfume ID for '{data.get('title')}'.")
+            logging.error(f"❌ Failed to get or create perfume ID for '{data.get('perfume_name')}'.")
             return
 
         self.db_manager.clear_perfume_details(perfume_id)
@@ -65,27 +68,30 @@ class Extractor:
             accord_name = accord_info.get('name')
             accord_strength = accord_info.get('strength')
             if accord_name:
-                accord_id = self.db_manager.get_or_create_id("accords", "accord", accord_name.strip())
+                accord_id = self.db_manager.get_or_create_id("Accords", "accord", accord_name.strip())
                 if accord_id:
                     self.db_manager.link_perfume_accord(perfume_id, accord_id, accord_strength)
 
         for level_key, notes_list in data.get('perfume_pyramid', {}).items():
             level = level_key.replace('_notes', '')
             for note_name in notes_list:
-                note_id = self.db_manager.get_or_create_id("notes", "note", note_name.strip())
+                note_id = self.db_manager.get_or_create_id("Notes", "note", note_name.strip())
                 if note_id:
-                    self.db_manager.link_perfume_note(perfume_id, note_id, level)
+                    # CHANGED
+                    self.db_manager.link_perfume_note(perfume_id, note_id, note_level=level)
 
         for note_name in data.get('linear_notes', []):
-            note_id = self.db_manager.get_or_create_id("notes", "note", note_name.strip())
+            note_id = self.db_manager.get_or_create_id("Notes", "note", note_name.strip())
             if note_id:
-                self.db_manager.link_perfume_note(perfume_id, note_id, 'linear')
+                # CHANGED
+                self.db_manager.link_perfume_note(perfume_id, note_id, note_level='linear')
 
         logging.info(f"✅ Finished processing all data for PerfumeID {perfume_id}.")
 
     def _extract_all_data(self, html_content: str, url: str) -> dict:
         soup = BeautifulSoup(html_content, "html.parser")
-        data = {"url": url}
+        # CHANGED
+        data = {"perfume_url": url}
         extractor_methods = [
             self._extract_title, self._extract_brand, self._extract_image_url,
             self._extract_reviews_and_ratings, self._extract_main_accords,
@@ -104,6 +110,8 @@ class Extractor:
                 logging.error(f"Error in {getattr(method, '__name__', 'lambda')}: {e}")
 
         try:
+            # IMPORTANT: This function must now return reviews with keys:
+            # 'review_content', 'reviewer_name', 'review_date'
             data.update(scrape_all_reviews_with_selenium(url))
         except Exception as e:
             logging.error(f"❌ Selenium review scraping failed for {url}: {e}")
@@ -113,11 +121,12 @@ class Extractor:
 
     # ---------- Individual Extract Methods Below ----------
 
+    # CHANGED
     def _extract_title(self, soup):
         title_tag = soup.select_one('#toptop > h1')
         return {
-            "title": title_tag.contents[0].strip() if title_tag and title_tag.contents else "",
-            "subtitle": title_tag.find('small').get_text(strip=True) if title_tag and title_tag.find('small') else ""
+            "perfume_name": title_tag.contents[0].strip() if title_tag and title_tag.contents else "",
+            "perfume_for": title_tag.find('small').get_text(strip=True) if title_tag and title_tag.find('small') else ""
         }
 
     def _extract_brand(self, soup):
@@ -134,7 +143,7 @@ class Extractor:
 
     def _extract_reviews_and_ratings(self, soup):
         return {
-            "review_count": soup.find('meta', itemprop='reviewCount').get("content") if soup.find('meta', itemprop='reviewCount') else "0",
+            "review_count": soup.find('meta', itemprop='reviewCount').get("content") if soup.find('meta',                                                                                          itemprop='reviewCount') else "0",
             "rating_count": soup.find('span', itemprop='ratingCount').get_text(strip=True) or "0",
             "rating_value": soup.find('span', itemprop='ratingValue').get_text(strip=True) or "0"
         }
@@ -153,7 +162,7 @@ class Extractor:
             "main_accords": accords,
             "strengths": strengths
         }
-    
+
     def _extract_vote_sections(self, soup):
         brands = soup.select('span.vote-button-name')
         legends = soup.select('span.vote-button-legend')
@@ -173,14 +182,12 @@ class Extractor:
                 match = re.search(r'width:\s*([\d.]+)%', bar.get("style", ""))
                 value = f"{float(match.group(1)):.2f}%"
                 if match:
-                    value = round(float(match.group(1)), 2)  # numeric value
+                    value = round(float(match.group(1)), 2)
                 else:
-                    value = None  # store NULL instead of "N/A"
+                    value = None
                 section_data[key] = value
             results[section_name] = section_data
-        # print(results)
         return results
-
 
     def _extract_section_votes(self, soup, section_title, key_name):
         anchor = soup.find('span', string=section_title)
@@ -199,16 +206,17 @@ class Extractor:
             level = normalize_key(h4.get_text())
             container = h4.find_next_sibling('div')
             if container:
-                notes = [n.get_text(strip=True) for n in container.select('div[style*="margin: 0.2rem"]') if n.get_text(strip=True)]
+                notes = [n.get_text(strip=True) for n in container.select('div[style*="margin: 0.2rem"]') if
+                         n.get_text(strip=True)]
                 pyramid[level] = notes
         return {"perfume_pyramid": pyramid}
 
     def _extract_linear_notes_if_no_pyramid(self, soup):
         if soup.select('#pyramid h4'):
             return {}
-        notes = [div.get_text(strip=True) for div in soup.select('div[style*="margin: 0.2rem"] > div:nth-child(2)') if div.get_text(strip=True)]
+        notes = [div.get_text(strip=True) for div in soup.select('div[style*="margin: 0.2rem"] > div:nth-child(2)') if
+                 div.get_text(strip=True)]
         return {"linear_notes": notes} if notes else {}
-
 
     def _extract_perfumer_info(self, soup):
         avatar = soup.find('img', class_='perfumer-avatar')
@@ -220,11 +228,8 @@ class Extractor:
 
     def _parse_launch_year(self, soup):
         text = soup.get_text(separator=" ")
-
-        # Match: "was launched in 2020", "was launched during the 2020s", "was launched during the 2020's"
         match = re.search(r'was launched (?:in|during the) (\d{4})(?:\'?s)?', text)
         if match:
             return {"launch_year": match.group(1)}
         else:
             return {"launch_year": "N/A"}
-

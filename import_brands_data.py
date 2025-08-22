@@ -4,10 +4,9 @@ import logging
 from utilities.dbmanager import DBManager
 
 # --- CONFIGURATION ---
-# Please ensure these file paths are correct for your project structure
 COUNTRIES_JSON_PATH = 'data/countries.json'
 BRANDS_JSON_PATH = 'data/brands.json'
-DETAILS_CSV_PATH = 'data/perfume_url.csv'  # Path to your CSV file
+DETAILS_CSV_PATH = 'data/perfume_url.csv'
 BASE_URL = "https://www.fragrantica.com"
 
 # Configure logging
@@ -16,55 +15,45 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def load_brand_details_from_csv(csv_path):
     """
-    Reads a headerless CSV file using column positions and creates a lookup dictionary.
-    It also cleans the brand name by removing ' perfumes and colognes'.
+    Reads a headerless CSV file and creates a lookup dictionary.
     """
     logging.info(f"Loading brand details from {csv_path}...")
     details_lookup = {}
     try:
         with open(csv_path, mode='r', encoding='utf-8') as infile:
-            # Using csv.reader for a headerless file
             reader = csv.reader(infile)
 
             for row in reader:
-                # **FIXED LOGIC**: Reads every row without skipping a header.
-                # Assuming the column order from your screenshot:
-                # column 1 (index 0): brand_name
-                # column 2 (index 1): brand_image_url
-                # column 3 (index 2): country
-                # column 4 (index 3): brand_website
-                if not row or len(row) < 4: continue  # Skip empty or malformed rows
+                if not row or len(row) < 4: continue
 
                 original_name = row[0].strip()
                 cleaned_name = original_name.replace(' perfumes and colognes', '').strip()
 
-                # Store the details if the name is not already present
                 if cleaned_name and cleaned_name not in details_lookup:
+                    # CHANGED: dictionary keys to match new column names
                     details_lookup[cleaned_name] = {
-                        'WebsiteUrl': row[3],
-                        'imageUrl': row[1]
+                        'brand_website_url': row[3],
+                        'brand_image_url': row[1]
                     }
 
         if not details_lookup:
-            logging.warning(
-                "CSV loaded, but it resulted in 0 unique brands. Check the file content and cleaning logic.")
+            logging.warning("CSV loaded, but it resulted in 0 unique brands.")
         else:
             logging.info(f"Successfully loaded details for {len(details_lookup)} unique brands from CSV.")
         return details_lookup
 
     except FileNotFoundError:
-        logging.error(f"FATAL: CSV file not found at '{csv_path}'. Please check the path in the script.")
+        logging.error(f"FATAL: CSV file not found at '{csv_path}'.")
         return {}
     except IndexError:
-        logging.error(f"FATAL: A row in the CSV file has fewer columns than expected. Please check the file format.")
+        logging.error(f"FATAL: A row in the CSV file has fewer columns than expected.")
         return {}
 
 
 def populate_countries_and_brands(db_manager, brand_details):
     """
-    Reads the JSON files to populate the Countries and Brands tables.
+    Reads JSON files to populate Countries and Brands tables.
     """
-    # --- Populate Countries Table ---
     logging.info(f"Populating Countries table from {COUNTRIES_JSON_PATH}...")
     try:
         with open(COUNTRIES_JSON_PATH, 'r', encoding='utf-8') as f:
@@ -80,7 +69,6 @@ def populate_countries_and_brands(db_manager, brand_details):
         logging.error(f"FATAL: Countries JSON file not found at {COUNTRIES_JSON_PATH}.")
         return
 
-    # --- Populate Brands Table ---
     logging.info(f"Populating Brands table from {BRANDS_JSON_PATH}...")
     try:
         with open(BRANDS_JSON_PATH, 'r', encoding='utf-8') as f:
@@ -94,16 +82,16 @@ def populate_countries_and_brands(db_manager, brand_details):
 
             for brand_data in brands_list:
                 brand_name = brand_data.get('brand_name').strip()
-
                 details = brand_details.get(brand_name, {})
 
+                # CHANGED: keyword arguments to match updated method
                 db_manager.get_or_create_brand(
-                    name=brand_name,
-                    countryID=country_id,
-                    BrandUrl=f"{BASE_URL}{brand_data.get('brand_url')}",
-                    PerfumeCount=brand_data.get('perfume_count'),
-                    WebsiteUrl=details.get('WebsiteUrl'),
-                    imageUrl=details.get('imageUrl')
+                    brand_name=brand_name,
+                    country_id=country_id,
+                    brand_url=f"{BASE_URL}{brand_data.get('brand_url')}",
+                    perfume_count=brand_data.get('perfume_count'),
+                    brand_website_url=details.get('brand_website_url'),
+                    brand_image_url=details.get('brand_image_url')
                 )
         logging.info("Finished populating Brands table.")
     except FileNotFoundError:
@@ -124,7 +112,7 @@ def main():
     if brand_details_lookup:
         populate_countries_and_brands(db, brand_details_lookup)
     else:
-        logging.warning("Brand details lookup failed or returned empty. Halting the import process.")
+        logging.warning("Brand details lookup failed or returned empty. Halting import.")
 
     logging.info("--- Data Import Process Complete ---")
 
