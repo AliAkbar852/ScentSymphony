@@ -36,7 +36,6 @@ def main():
 
     # Filter out already scraped URLs
     urls_left = [u for u in urls_to_scrape if u not in scraped_urls]
-    clean_failed_urls()
 
     batch_num = 0
 
@@ -74,4 +73,5 @@ def main():
     logging.info("🚀 All batches processed. Scraping complete!")
 
 if __name__ == "__main__":
+    clean_failed_urls()
     main()
