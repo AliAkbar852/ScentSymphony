@@ -107,7 +107,7 @@ class Extractor:
             try:
                 data.update(method(soup))
             except Exception as e:
-                logging.error(f"Error in {getattr(method, '__name__', 'lambda')}: {e}")
+                logging.warning(f"No Value found in {getattr(method, '__name__', 'lambda')}: {e}")
 
         try:
             # IMPORTANT: This function must now return reviews with keys:
