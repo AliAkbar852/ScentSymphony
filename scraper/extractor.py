@@ -142,10 +142,18 @@ class Extractor:
         return {"description": desc.p.get_text(strip=True) if desc and desc.p else "N/A"}
 
     def _extract_reviews_and_ratings(self, soup):
+        def safe_get_text(selector):
+            element = soup.select_one(selector)
+            return element.get_text(strip=True).replace(",", "") if element else "0"
+
+        def safe_get_content(selector):
+            element = soup.find('meta', itemprop=selector)
+            return element.get("content").replace(",", "") if element else "0"
+
         return {
-            "review_count": soup.find('meta', itemprop='reviewCount').get("content") if soup.find('meta',                                                                                          itemprop='reviewCount') else "0",
-            "rating_count": soup.find('span', itemprop='ratingCount').get_text(strip=True) or "0",
-            "rating_value": soup.find('span', itemprop='ratingValue').get_text(strip=True) or "0"
+            "review_count": safe_get_content("reviewCount"),
+            "rating_count": safe_get_text('span[itemprop="ratingCount"]'),
+            "rating_value": safe_get_text('span[itemprop="ratingValue"]')
         }
 
     def _extract_main_accords(self, soup):

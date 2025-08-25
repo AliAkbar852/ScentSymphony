@@ -13,8 +13,8 @@ from utilities.file_utils import failed_url, clean_failed_urls
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 BATCH_SIZE = 25  # Number of URLs to process in each batch
-SLEEP_MIN = 8 * 30  # 8 minutes
-SLEEP_MAX = 10 * 30  # 10 minutes
+SLEEP_MIN = 8 * 60  # 8 minutes
+SLEEP_MAX = 15 * 60  # 15 minutes
 FAILED_LOG_FILE = "failed_urls.log"
 
 

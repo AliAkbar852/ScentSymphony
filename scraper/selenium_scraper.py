@@ -134,16 +134,46 @@ def scrape_all_reviews_with_selenium(url):
                     continue
 
             try:
-               username_element = review.find_element(By.CSS_SELECTOR, "b.idLinkify a")
-               username = username_element.text.strip()
-            #    print("Username:", username)
+                username = None  # Default to None
+                try:
+                    # Try to find <b class="idLinkify"><a>Username</a></b>
+                    username_element = review.find_element(By.CSS_SELECTOR, "b.idLinkify a")
+                    username = username_element.text.strip()
+
+                except NoSuchElementException:
+                    try:
+                        # Fallback: extract first <b><span>...</span></b>
+                        b_tags = review.find_elements(By.TAG_NAME, "b")
+                        for b in b_tags:
+                            span = b.find_element(By.TAG_NAME, "span")
+                            text = span.text.strip()
+                            if text:
+                                username = text
+                                break
+                    except NoSuchElementException:
+                        print("No username found in fallback <b><span> structure.")
+                        continue
+                # print("Username:", username)
             except NoSuchElementException:
-                print("Username not found for a review. Skipping extraction.")
+                print("Error while extracting username:")
 
             # Now, attempt to find the date for the review
             try:
-                date_element = review.find_element(By.CSS_SELECTOR, 'span[itemprop="datePublished"]')
-                review_date = date_element.get_attribute("content")
+                review_date = None
+                try:
+                    # Primary strategy: Look for <span itemprop="datePublished">
+                    date_element = review.find_element(By.CSS_SELECTOR, 'span[itemprop="datePublished"]')
+                    review_date = date_element.get_attribute("content")
+                except NoSuchElementException:
+                    # Fallback strategy: Look for <time datetime="...">
+                    try:
+                        fallback_date_element = review.find_element(By.CSS_SELECTOR, 'span.vote-button-legend')
+                        review_date = fallback_date_element.text  # or .get_attribute("innerText")
+                    except NoSuchElementException:
+                        print("No date found in this review.")
+                        continue
+
+                # print("Review Date:", review_date)
             except NoSuchElementException:
                 # This is not critical, so we'll just log and continue without a date.
                 print("Date not found for a review. Skipping date extraction.")
@@ -151,7 +181,8 @@ def scrape_all_reviews_with_selenium(url):
             # Add the found text and date to our list if text is not empty
             if review_text:
                 # CHANGED: Updated dictionary keys to match dbmanager expectations
-                scraped_data.append({'review_content': review_text, 'review_date': review_date, 'reviewer_name': username})
+                scraped_data.append(
+                    {'review_content': review_text, 'review_date': review_date, 'reviewer_name': username})
             else:
                 skipped_reviews += 1
 
